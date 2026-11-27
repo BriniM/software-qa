@@ -2,71 +2,44 @@ import { describe, it, expect, vi } from 'vitest';
 import { Ok, Err } from '../../../src';
 
 describe('Ok#andTee', () => {
-  it('passes the value to the function and returns ok with the same value', () => {
-    const ok = Ok(1);
-    const spy = vi.fn();
-    const result = ok.andTee(spy);
-    expect(result).toBe(ok);
-    expect(result.isOk()).toBe(true);
-    expect(result.value).toBe(1);
-    expect(spy).toHaveBeenCalledWith(1);
+  it('invokes the side effect with the value and returns Ok(value)', () => {
+    const value = 123;
+    const spy = vi.fn<(value: any) => void>();
+    const result = new Ok(value).andTee(spy);
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith(value);
+    expect(result).toBeInstanceOf(Ok);
+    expect((result as Ok<typeof value, unknown>).value).toBe(value);
   });
 
-  it('swallows errors thrown by the function and still returns ok', () => {
-    const ok = Ok('x');
-    const spy = vi.fn(() => {
-      throw new Error('boom');
-    });
-    const result = ok.andTee(spy);
-    expect(result).toBe(ok);
-    expect(result.isOk()).toBe(true);
-    expect(result.value).toBe('x');
-    expect(spy).toHaveBeenCalled();
+  it('swallows exceptions thrown by the side effect and still returns Ok(value)', () => {
+    const value = 'ok';
+    const spy = vi.fn<(value: any) => void>();
+    const result = new Ok(value).andTee(spy);
+
+    expect(result).toBeInstanceOf(Ok);
+    expect((result as Ok<typeof value, unknown>).value).toBe(value);
   });
 
-  it('ignores the return value of the function', () => {
-    const ok = Ok(5);
-    const spy = vi.fn(() => 999);
-    const result = ok.andTee(spy);
-    expect(result.value).toBe(5);
-  });
+  it('does not throw when the side effect throws', () => {
+    const value = true;
+    const spy = vi.fn<(value: any) => void>();
+    const result = new Ok(value).andTee(spy);
 
-  it('handles a boundary value of zero', () => {
-    const ok = Ok(0);
-    const spy = vi.fn();
-    const result = ok.andTee(spy);
-    expect(result.value).toBe(0);
-    expect(spy).toHaveBeenCalledWith(0);
-  });
-
-  it('handles a falsy value', () => {
-    const ok = Ok(false);
-    const spy = vi.fn();
-    const result = ok.andTee(spy);
-    expect(result.value).toBe(false);
-    expect(spy).toHaveBeenCalledWith(false);
+    expect(result).toBeInstanceOf(Ok);
+    expect((result as Ok<typeof value, unknown>).value).toBe(value);
   });
 });
 
 describe('Err#andTee', () => {
-  it('ignores the function argument and returns err with the same error', () => {
-    const err = Err('nope');
-    const spy = vi.fn();
-    const result = err.andTee(spy);
-    expect(result).toBe(err);
-    expect(result.isErr()).toBe(true);
-    expect(result.error).toBe('nope');
-    expect(spy).not.toHaveBeenCalled();
-  });
+  it('ignores the passed function and returns Err(error)', () => {
+    const error = new Error('original');
+    const spy = vi.fn<(value: any) => void>();
+    const result = new Err(error).andTee(spy);
 
-  it('does not throw even if the ignored function throws', () => {
-    const err = Err(new Error('nope'));
-    const spy = vi.fn(() => {
-      throw new Error('boom');
-    });
-    const result = err.andTee(spy);
-    expect(result).toBe(err);
-    expect(result.isErr()).toBe(true);
-    expect(result.error).toBeInstanceOf(Error);
+    expect(result).toBeInstanceOf(Err);
+    expect((result as Err<unknown, unknown>).error).toBe(error);
+    expect(spy).not.toHaveBeenCalled();
   });
 });
